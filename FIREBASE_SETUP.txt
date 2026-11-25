@@ -1,0 +1,36 @@
+ATHLETICS MEET MANAGER - FIREBASE VERSION (no server, no Node.js, free)
+=======================================================================
+Everything runs in the browser. Data is stored live in Firebase Realtime Database.
+
+A) FIREBASE CONSOLE (console.firebase.google.com -> project "athletic-trawing-management")
+ 1. Build -> Realtime Database -> Create Database. Pick a location (Singapore is closest), "Start in locked mode".
+ 2. If the URL shown at the top of the Realtime Database page is NOT
+        https://athletic-trawing-management-default-rtdb.firebaseio.com
+    copy it and paste it into js/firebase-config.js  ->  databaseURL: "..."
+ 3. Realtime Database -> Rules tab -> delete everything -> paste the content of database.rules.json -> Publish.
+ 4. Build -> Authentication -> Get started -> Sign-in method -> Email/Password -> Enable -> Save.
+ 5. Authentication -> Users -> Add user -> make ONE login (e.g. officials@meet.lk + a password). Share it only with the officials.
+ 6. (After you host the site) Authentication -> Settings -> Authorized domains -> Add domain -> your site, e.g. yourname.github.io
+
+B) HOST THE FILES (GitHub Pages, free, no card, no Node.js)
+ 1. github.com -> New repository -> name "athletics-meet" -> Public -> Create.
+ 2. "uploading an existing file" -> drag ALL files/folders of this folder (index.html, admin.html, js, css, lib, img ...) -> Commit.
+ 3. Settings -> Pages -> Source: "Deploy from a branch" -> Branch: main, folder: / (root) -> Save.
+ 4. After ~1 minute the link is  https://YOURNAME.github.io/athletics-meet/
+ Alternative: app.netlify.com/drop -> drag this folder (needs only an account).
+
+C) USE
+ - Open the link on the laptop -> the launcher shows QR codes.
+ - Scoreboard (board.html) is public / read-only. Control room (admin.html) and Mobile entry (timing.html) ask for the login.
+ - Phones: scan the "Mobile entry" QR, log in once (the phone remembers it).
+
+NOTES
+ - Old data: export from the old version (Save/Load -> Download everything) and use Import here.
+ - Want NO login? Use database.rules.OPEN-no-login.json and set REQUIRE_LOGIN=false in js/firebase-config.js (anyone with the link can then edit).
+ - Free Spark plan limits are generous for one meet, but check Usage in the Firebase console if you run huge meets.
+
+D) EVENT BOARDS (added)
+ - Control room -> Events -> on each event card use "Show live on" to give it Event board 1-5. Open eventboard.html?b=1 ... ?b=5 on the extra screens (the launcher shows links + QR codes).
+ - Event boards show the live view (attempt by attempt, ranking movement, next up / call countdown) for ONE event.
+ - The Main scoreboard (board.html) lists all events: shows the live player-wise result of every event; when events update together they wait in a pending queue and are shown one by one, then it cycles through all events.
+ - No new Firebase rules needed (boards are stored under meet/meta/slots).

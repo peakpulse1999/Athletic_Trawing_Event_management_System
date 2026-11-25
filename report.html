@@ -1,0 +1,17 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Meet report</title><link rel="stylesheet" href="css/style.css"></head>
+<body><div class="top noprint"><h1>Official results report</h1><button onclick="print()">Print / Save as PDF</button><button class="g" onclick="xl()">Download Excel</button></div>
+<main id="m"></main><script src="lib/xlsx.full.min.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><script src="js/firebase-config.js"></script><script src="js/common.js"></script><script>
+const tb=(rows,ev)=>{const n=evAtt(ev);return `<table><tr><th>Pos</th><th>Bib</th><th>Athlete</th><th>Province</th>${Array.from({length:n},(_,i)=>`<th>A${i+1}</th>`).join('')}<th>Best</th></tr>${rows.map((r,i)=>{const a=ath(r.ath),at=getAtt(r);return `<tr><td>${r.t!=null?i+1:'-'}</td><td>${esc(a.bib||'')}</td><td>${esc(a.name)}</td><td>${esc(a.prov)}</td>${Array.from({length:n},(_,j)=>`<td>${attHTML(at[j],ev,'-')}</td>`).join('')}<td><b>${r.t!=null?fmtV(r.t,ev):'NM'}</b></td></tr>`}).join('')}</table>`};
+function draw(){const t=tally().filter(x=>x[1].g+x[1].s+x[1].b);
+ let h=`<div class="card"><h1 style="font-size:30px">${esc(meetName())}</h1><p class="mu">Generated ${new Date().toLocaleString()} · ${Object.keys(S.athletes).length} athletes · ${Object.keys(S.events).length} events</p></div>`;
+ h+=`<div class="card"><h2>Provincial medal table</h2>${t.length?`<table><tr><th>Province</th><th>Gold</th><th>Silver</th><th>Bronze</th></tr>${t.map(([p,m])=>`<tr><td>${esc(p)}</td><td>${m.g}</td><td>${m.s}</td><td>${m.b}</td></tr>`).join('')}</table>`:'<p class="mu">No finals completed yet.</p>'}</div>`;
+ evList().forEach(([k,e])=>{h+=`<div class="card"><h2>${esc(evLabel(e))}</h2>`;if(e.stage==='final')h+=`<h3>Final</h3>${tb(res(k,'final'),k)}<br>`;h+=`<h3>Round 1</h3>${tb(res(k,'r1'),k)}</div>`});
+ $('#m').innerHTML=h}
+function xl(){const wb=XLSX.utils.book_new(),t=tally();
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Province','Gold','Silver','Bronze'],...t.map(([p,m])=>[p,m.g,m.s,m.b])]),'Medal table');
+ const used=new Set(['Medal table']);
+ evList().forEach(([k,e])=>{const na=evAtt(k),rows=[['Round','Pos','Bib','Athlete','Province',...Array.from({length:na},(_,i)=>'Attempt '+(i+1)),'Best']];['final','r1'].forEach(st=>{if(st==='final'&&e.stage!=='final')return;res(k,st).forEach((r,i)=>rows.push([st==='final'?'Final':'Round 1',r.t!=null?i+1:'-',ath(r.ath).bib||'',ath(r.ath).name,ath(r.ath).prov,...Array.from({length:na},(_,j)=>getAtt(r)[j]!=null?fmtV(getAtt(r)[j],k):''),r.t!=null?fmtV(r.t,k):'NM']))});
+  let n=evLabel(e).replace(/[\\\/?*\[\]:]/g,'').slice(0,28)||'Event',x=n,i=2;while(used.has(x))x=n.slice(0,26)+i++;used.add(x);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),x)});
+ XLSX.writeFile(wb,'meet_report.xlsx')}
+connect(draw);
+</script></body></html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoreboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0b1f3a;--yellow:#ffd400;--red:#c41e24;--green:#159447;--amber:#f5a623;--blue:#29abe2;--A:'Anton',Impact,'Arial Narrow',sans-serif;--B:'Barlow Condensed','Arial Narrow',sans-serif;--O:'Orbitron',Consolas,ui-monospace,monospace}
+html[data-theme=light]{--bg:#fff;--tx:#0b1f3a;--bd:#0b1f3a;--mu:rgba(11,31,58,.6);--row:#fff;--tt:#ffd400}
+html[data-theme=dark]{--bg:#12233b;--tx:#f5f1e6;--bd:rgba(245,241,230,.35);--mu:rgba(245,241,230,.6);--row:rgba(245,241,230,.06);--tt:#d4a94a}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--tx);font-family:var(--B);overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;padding:1vh 2vw;border-bottom:.3vh solid var(--bd);flex:none}
+.lg{width:25vw;display:flex;align-items:center;gap:1vw}.lg.r{justify-content:flex-end;text-align:right}
+.lg img{height:min(13vh,10vw);width:min(13vh,10vw);object-fit:contain}.lg .lb{font-size:min(2.6vh,1.6vw);line-height:1.2;font-weight:600}.lg .lb b{display:block;font-size:min(3vh,1.9vw)}
+.ctr{flex:1;text-align:center}.ttl{font:400 min(4.6vh,3.2vw)/1.1 var(--A);letter-spacing:.06em;color:var(--tt);text-transform:uppercase;-webkit-text-stroke:.12vh var(--navy);text-shadow:.2vh .2vh 0 rgba(11,31,58,.35)}
+html[data-theme=dark] .ttl{-webkit-text-stroke:0}
+.sub{font-size:min(2.6vh,1.9vw);font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-top:.5vh}.sub i{font-style:normal;color:var(--red);margin-left:1vw}
+.spot{flex:none;margin:1.2vh 2vw 0;height:21vh;border:.5vh solid var(--bd);border-radius:2.2vh;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2.5vw;padding:0 3vw;background:var(--row);position:relative;overflow:hidden;transition:background .4s,border-color .4s}
+.spot.new{background:var(--yellow);border-color:var(--navy);color:var(--navy);box-shadow:0 0 5vh #ffd400aa;animation:pop .6s}.spot.moved{border-color:var(--green)}
+@keyframes pop{0%{transform:scale(.97)}60%{transform:scale(1.015)}100%{transform:scale(1)}}
+.spot .flag{height:13vh;width:19.5vh}.spot .sn{font:400 min(8vh,5.6vw)/1 var(--A);text-transform:uppercase;letter-spacing:.03em}.spot .sp{font-size:min(3.6vh,2.4vw);font-weight:600;color:var(--mu)}.spot.new .sp{color:var(--navy)}
+.spot .tg{display:inline-block;font:700 min(2.4vh,1.6vw) var(--B);letter-spacing:.2em;padding:.4vh 1.2vw;border-radius:99px;background:var(--navy);color:#fff;margin-bottom:1vh;text-transform:uppercase}.spot.moved .tg{background:var(--green)}
+.spot .st{text-align:right}.spot .tm{font:900 min(11.5vh,8vw)/1 var(--O);color:var(--tx);font-variant-numeric:tabular-nums}.spot .pl{font:700 min(4vh,2.6vw) var(--B);letter-spacing:.06em;color:var(--tx);margin-top:.6vh}.spot .pl b{color:var(--green)}.spot .pl b.dn{color:var(--red)}
+.spot .fl{font:400 min(8vh,5.5vw) var(--A);text-align:center;grid-column:1/-1}.spot.idle{grid-template-columns:1fr}.spot.idle .tm{font-size:min(7vh,5vw)}
+.body{flex:1;position:relative;margin:1.2vh 2vw;min-height:0}
+.rw{position:absolute;display:flex;align-items:center;gap:1.4vw;padding:0 1.2vw;border:.3vh solid var(--bd);border-radius:1.6vh;background:var(--row);transition:top .9s cubic-bezier(.2,.8,.2,1),background .4s,border-color .4s;overflow:hidden}
+.rk{flex:none;width:calc(var(--h)*.95);height:calc(var(--h)*.78);border:.3vh solid var(--bd);border-radius:1.2vh;display:grid;place-items:center;font:400 calc(var(--h)*.5) var(--A);color:var(--amber);background:var(--bg)}
+.rw .flag{height:calc(var(--h)*.58);width:calc(var(--h)*.87)}
+.nm{flex:1;min-width:0;font:400 calc(var(--h)*.42) var(--A);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.03em}.nm small{display:block;font:600 calc(var(--h)*.24) var(--B);color:var(--blue);text-transform:none;letter-spacing:.04em}
+.tm{font:700 calc(var(--h)*.42) var(--O);font-variant-numeric:tabular-nums}
+.bd{position:absolute;right:0;top:0;font:700 calc(var(--h)*.26) var(--B);padding:.2vh 1vw;border-radius:0 0 0 1.2vh;color:#fff;background:var(--green)}.bd.dn{background:var(--red)}.bd.nw{background:var(--blue)}
+.rw.q{border-left:1.2vh solid var(--green)}.rw.g1{border-color:#d4a017;background:#ffd40030}.rw.g2{border-color:#9aa3b2}.rw.g3{border-color:#c9783a}
+.rw.hot{background:var(--yellow);border-color:var(--navy);color:var(--navy);z-index:2}.rw.hot .rk{background:#fff}.rw.hot .tm{color:var(--navy)}
+.cut{position:absolute;top:0;bottom:0;border-left:.3vh dashed var(--mu)}
+.foot{flex:none;text-align:center;font-size:min(1.8vh,1.2vw);padding:.6vh;color:var(--mu);border-top:.2vh solid var(--bd)}
+.fab{position:fixed;right:1.5vw;bottom:1.5vh;display:flex;gap:.8vh;opacity:.25;transition:.2s}.fab:hover{opacity:1}
+.fab button,.fab select{font:600 15px var(--B);padding:7px 12px;border:2px solid var(--navy);border-radius:10px;background:#fff;color:var(--navy);cursor:pointer}
+.empty{position:absolute;inset:0;display:grid;place-items:center;font:400 5vh var(--A);color:var(--mu);text-align:center}
+.bib{flex:none;min-width:calc(var(--h)*.95);height:calc(var(--h)*.5);display:grid;place-items:center;padding:0 .6vw;background:#fff;color:#111;border:.25vh solid #111;border-radius:.7vh;font:700 calc(var(--h)*.34) var(--B);letter-spacing:.05em}
+.spot .bib{--h:9vh;font-size:4vh;margin-top:1vh;display:inline-grid}
+
+/* ---- NEXT UP / ON THE MARK + countdown bar ---- */
+.nxt{flex:none;margin:1.2vh 2vw 0;height:10vh;border:.4vh solid var(--bd);border-radius:1.8vh;display:flex;align-items:center;gap:1.6vw;padding:0 2vw;background:var(--row);position:relative;overflow:hidden;transition:background .3s,border-color .3s,color .3s}
+.nxt .lbl{flex:none;font:700 min(2.5vh,1.7vw) var(--B);letter-spacing:.2em;text-transform:uppercase;padding:.7vh 1.4vw;border-radius:99px;background:var(--navy);color:#fff;white-space:nowrap}
+html[data-theme=dark] .nxt .lbl{background:var(--tt);color:var(--navy)}
+.nxt .flag{height:6.4vh;width:9.6vh;flex:none}
+.nxt .bib{--h:10vh;font-size:4.4vh;flex:none}
+.nxt .who{flex:1;min-width:0}
+.nxt .nn{font:400 min(5.2vh,3.3vw)/1.05 var(--A);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.03em}
+.nxt .ss{font:600 min(2.5vh,1.7vw) var(--B);color:var(--mu);letter-spacing:.04em}
+.nxt .cd{flex:none;font:900 min(7.6vh,5.4vw)/1 var(--O);font-variant-numeric:tabular-nums;text-align:right;min-width:3.6em}
+.nxt .pb{position:absolute;left:0;bottom:0;height:.9vh;width:100%;background:currentColor;opacity:.45;transition:width .25s linear}
+.nxt.call{background:var(--green);border-color:var(--green);color:#fff}
+.nxt.call .lbl{background:#fff;color:var(--green)}.nxt.call .ss{color:#ffffffd9}
+.nxt.warn{background:var(--amber);border-color:var(--amber);color:var(--navy)}
+.nxt.warn .lbl{background:var(--navy);color:#fff}.nxt.warn .ss{color:var(--navy)}
+.nxt.crit,.nxt.over{background:var(--red);border-color:var(--red);color:#fff}
+.nxt.crit .lbl,.nxt.over .lbl{background:#fff;color:var(--red)}.nxt.crit .ss,.nxt.over .ss{color:#ffffffd9}
+.nxt.crit{animation:cblink 1s ease-in-out infinite}.nxt.over{animation:cblink .6s ease-in-out infinite}
+@keyframes cblink{50%{filter:brightness(1.3)}}
+.at{font-weight:600;color:var(--mu)}.at b{color:var(--green)}
+.spot .bs{font:700 min(3vh,2vw) var(--B);letter-spacing:.12em;color:var(--mu);margin-top:.4vh}.spot.new .bs{color:var(--navy)}
+</style></head><body><div id="app">
+<div class="top"><div class="lg"><img id="limg" src="img/emblem.jpg" alt=""><div class="lb" id="ll"></div></div>
+<div class="ctr"><div class="ttl" id="mn"></div><div class="sub" id="evt"></div></div>
+<div class="lg r"><div class="lb" id="rl"></div><img id="rimg" alt="" style="display:none"></div></div>
+<div class="spot idle" id="spot"></div>
+<div class="nxt" id="nxt"></div>
+<div class="body"><div id="rows"></div><div class="empty" id="empty"></div></div>
+<div class="foot">Ministry of Sports &amp; Youth Affairs — Official Digital Scoreboard · &copy; <span class="yr"></span> PEAK PLUSE. All rights reserved.</div></div>
+<div class="fab"><button id="th">Theme</button><button id="fs">Fullscreen</button></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><script src="js/firebase-config.js"></script><script src="js/common.js"></script><script>
+const P1=10000,P2=4500,P2S=2500,BADGE=9000;
+const BN=new URLSearchParams(location.search).get('b')||'1';const slotEv=()=>{const id=(S.meta.slots||{})[BN];return id&&S.events[id]?id:''};
+let cur='',active=null;const Q=[],ordT={},shownT={},attShown={},sigSeen={},attSeen={},badge={},els={};
+document.documentElement.dataset.theme=localStorage.th||'light';
+$('#th').onclick=()=>{const t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=localStorage.th=t};
+$('#fs').onclick=()=>document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+const rowsOf=ev=>{const e=S.events[ev];if(!e)return[];const c=cmpRes(ev);return Object.entries(S.results).filter(([k,r])=>r.ev===ev&&r.st===e.stage).map(([k,r])=>({k,...r,t:ordT[k]??null,att:attShown[k]||[]})).sort((a,b)=>c(a,b)||a.ts-b.ts)};
+const rankOf=(ev,k)=>ordT[k]==null?null:rowsOf(ev).findIndex(x=>x.k===k)+1;
+const ord=n=>n+(['th','st','nd','rd'][(n%100>10&&n%100<14)?0:Math.min(n%10,4)%4]||'th');
+let callSig='';
+function onData(){
+ const cc=activeCall(),cs=cc?cc.k+'|'+cc.i+'|'+cc.start:'';cur=slotEv();if(cs!==callSig)callSig=cs;
+ for(const k in S.results){const r=S.results[k],a=getAtt(r),s=a.join('|');
+  if(!(k in sigSeen)){sigSeen[k]=s;attSeen[k]=a;ordT[k]=shownT[k]=r.t;attShown[k]=a;continue}
+  if(s!==sigSeen[k]){const prev=attSeen[k]||[];let idx=-1;for(let i=0;i<a.length;i++)if(a[i]!=null&&a[i]!==prev[i])idx=i;
+   sigSeen[k]=s;attSeen[k]=a;
+   if(idx<0){ordT[k]=shownT[k]=r.t;attShown[k]=a}else Q.push({k,idx,v:a[idx],best:r.t,a})}}
+ for(const k of Object.keys(sigSeen))if(!(k in S.results)){[sigSeen,attSeen,ordT,shownT,attShown].forEach(o=>delete o[k])}
+ pump();draw()}
+function pump(){
+ if(active||!Q.length)return;const it=Q.shift(),r=S.results[it.k];if(!r){pump();return}
+ if(r.ev!==cur){ordT[it.k]=shownT[it.k]=it.best;attShown[it.k]=it.a;pump();return}
+ active=it;it.ev=r.ev;it.old=ordT[it.k];it.r0=rankOf(r.ev,it.k);it.same=it.old===it.best;
+ shownT[it.k]=it.best;attShown[it.k]=it.a;draw();
+ setTimeout(()=>{ordT[it.k]=it.best;it.r1=rankOf(it.ev,it.k);const d=it.old==null?null:it.r0-it.r1;it.d=d;it.moved=true;
+  if(!it.same)badge[it.k]={txt:d==null?'NEW':d>0?'▲ '+d:d<0?'▼ '+(-d):'＝',cls:d==null?'nw':d<0?'dn':'',until:Date.now()+BADGE};
+  draw();setTimeout(draw,BADGE+100);
+  setTimeout(()=>{active=null;draw();setTimeout(pump,400)},it.same?P2S:P2)},P1)}
+const nxtCls=c=>'nxt'+(c?' call '+callState(c):'');
+function nxtHTML(ev,c){const e=S.events[ev],n=evAtt(ev),s=c?{k:c.k,i:c.i,ath:c.ath}:nextSlot(ev,e.stage);
+ if(!s){const any=Object.values(S.results).some(r=>r.ev===ev&&r.st===e.stage);return`<div class="lbl">${any?'Complete':'Next up'}</div><div class="who"><div class="nn">${any?'All attempts recorded':'—'}</div></div>`}
+ const a=ath(s.ath);
+ return`<div class="lbl">${c?'On the mark':'Next up'}</div>${bibTag(a)}${flag(a.prov)}<div class="who"><div class="nn">${esc(a.name)}</div><div class="ss">${esc(a.prov)} Province${n>1?' · Attempt '+(s.i+1)+' of '+n:''}</div></div>${c?'<div class="cd" id="cdv"></div><div class="pb" id="cpb"></div>':''}`}
+function tick(){const nx=$('#nxt');if(!nx)return;const c=cur&&S.events[cur]?callFor(cur):null,cl=nxtCls(c);if(nx.className!==cl)nx.className=cl;
+ if(!c)return;const L=callLeft(c),v=$('#cdv'),p=$('#cpb'),t=L<=0?'TIME':fmtClock(L);if(v&&v.textContent!==t)v.textContent=t;if(p)p.style.width=(L/(c.dur||CALL_SECS)*100)+'%'}
+setInterval(tick,200);
+function spotHTML(rows){
+ if(active){const r=S.results[active.k],a=ath(r.ath),ev=S.events[active.ev],n=evAtt(active.ev);
+  const lead=rows.filter(x=>x.k!==active.k&&ordT[x.k]!=null);let pl;
+  const fx=active.v==='X'?'<b class="dn">Foul</b> · ':active.v==='-'?'Not used · ':'';
+  if(active.best==null)pl=fx+'no valid mark yet';
+  else if(!active.moved){const p=1+lead.filter(x=>better(ordT[x.k],active.best,active.ev)).length;pl=active.same?`${fx}Best mark unchanged · stays <b>${ord(p)}</b>`:`Provisional position <b>${ord(p)}</b>`+(lead.length&&p>1?` &nbsp;·&nbsp; ${Math.abs(active.best-ordT[lead[0].k]).toFixed(2)} behind leader`:p===1&&lead.length?' &nbsp;·&nbsp; <b>NEW LEADER</b>':'')}
+  else pl=active.same?`${fx}Best mark unchanged · holds <b>${ord(active.r1)}</b>`:active.d==null?`Entered at <b>${ord(active.r1)}</b>`:active.d>0?`<b>▲ Up ${active.d} place${active.d>1?'s':''}</b> → ${ord(active.r1)}`:active.d<0?`<b class="dn">▼ Down ${-active.d} place${active.d<-1?'s':''}</b> → ${ord(active.r1)}`:`Holds <b>${ord(active.r1)}</b>`;
+  return [active.moved?'moved':'new',`${flag(a.prov)}<div><div class="tg">${active.moved?'Ranking updated':'Attempt '+(active.idx+1)+' of '+n} · ${esc(evLabel(ev))}</div><div class="sn">${esc(a.name)}</div><div class="sp">${esc(a.prov)} Province ${bibTag(a)}</div></div><div class="st"><div class="tm">${attHTML(active.v,active.ev)}</div><div class="bs">${active.best==null?'NO VALID MARK':'BEST '+fmtV(active.best,active.ev)}</div><div class="pl">${pl}</div></div>`]}
+ const L=rows.find(x=>ordT[x.k]!=null);
+ return ['idle',L?`<div class="fl">${Q.length?'Next result incoming…':'Leader'} · ${esc(ath(L.ath).name)} <span class="tm">${fmtV(ordT[L.k],cur)}</span></div>`:`<div class="fl" style="color:var(--mu)">Waiting for first result…</div>`]}
+function draw(){
+ const mn=meetName();$('#mn').textContent=mn;document.title=mn;const m=S.meta.main||{};
+ const lab=(t,d)=>{t=t==null?d:t;return t?esc(t).replace(/^(\S+(?:\s+of)?)(\s|$)/,'<b>$1</b>$2'):''};
+ $('#ll').innerHTML=lab(m.leftLabel,'Government of Sri Lanka');$('#rl').innerHTML=lab(m.rightLabel,'');
+ $('#limg').src=m.leftLogo||'img/emblem.jpg';const ri=$('#rimg');if(m.rightLogo){ri.src=m.rightLogo;ri.style.display=''}else ri.style.display='none';
+ cur=slotEv();const e=S.events[cur],host=$('#rows');$('.foot').innerHTML='Ministry of Sports &amp; Youth Affairs — Official Digital Scoreboard · Event board '+esc(BN)+' · &copy; '+new Date().getFullYear()+' PEAK PLUSE. All rights reserved.';
+ if(!e){host.innerHTML='';Object.keys(els).forEach(k=>delete els[k]);$('#empty').textContent='Event board '+BN+' — no event assigned yet (Control room → Events)';$('#evt').textContent='Event board '+BN;$('#spot').className='spot idle';$('#spot').innerHTML='<div class="fl" style="color:var(--mu)">Waiting for an event…</div>';$('#spot')._h='';$('#nxt').innerHTML='<div class="lbl">Next up</div><div class="who"><div class="nn">—</div></div>';$('#nxt')._h='';return}
+ const fin=e.stage==='final';$('#evt').innerHTML=`${esc(evLabel(e))}<i>${fin?'FINAL':'ROUND 1'}</i>${e.done?'<i style="color:var(--green)">✔ FINISHED</i>':''}`;
+ const rows=rowsOf(cur),na=evAtt(cur);$('#empty').textContent=rows.length?'':'No athletes entered yet';
+ const nc=callFor(cur),nh=nxtHTML(cur,nc),nx=$('#nxt');if(nx._h!==nh){nx.innerHTML=nh;nx._h=nh}tick();
+ const [sc,sh]=spotHTML(rows),sp=$('#spot');if(sp._h!==sc+sh){sp.className='spot '+sc;sp.innerHTML=sh;sp._h=sc+sh}
+ const bw=host.parentElement,avail=bw.clientHeight,W=bw.clientWidth,n=rows.length,per=n>8?8:Math.max(n,5),cols=Math.max(1,Math.ceil(n/8)),h=Math.max(30,Math.min(avail/per,Math.round(window.innerHeight*.12))),gap=Math.round(h*.1);
+ host.style.setProperty('--h',(h-gap)+'px');const cw=(W-(cols-1)*14)/cols;let rk=0;const keep=new Set();
+ rows.forEach((r,i)=>{keep.add(r.k);const a=ath(r.ath),has=ordT[r.k]!=null,pos=has?++rk:null;let el=els[r.k];if(!el){el=els[r.k]=document.createElement('div');host.appendChild(el);el.style.top=avail+'px'}
+  const hot=active&&active.k===r.k,b=badge[r.k]&&badge[r.k].until>Date.now()?badge[r.k]:null,at=attShown[r.k]||[];
+  const atl=Array.from({length:na},(_,j)=>isNum(at[j])&&at[j]===shownT[r.k]?'<b>'+attHTML(at[j],cur)+'</b>':attHTML(at[j],cur,'··')).join(' &nbsp;|&nbsp; ');
+  const cls='rw'+(hot?' hot':fin&&has&&pos<=3?' g'+pos:!fin&&has&&pos<=8?' q':'');
+  const html=`<div class="rk">${pos??'–'}</div>${bibTag(a)}${flag(a.prov)}<div class="nm">${esc(a.name)}<small>${esc(a.prov)} <span class="at">· ${atl}</span></small></div><div class="tm">${fmtV(shownT[r.k],cur)}</div>${b?`<div class="bd ${b.cls}">${b.txt}</div>`:''}`;
+  if(el._h!==html){el.innerHTML=html;el._h=html}el.className=cls;
+  const c=Math.floor(i/8);el.style.left=c*(cw+14)+'px';el.style.width=cw+'px';el.style.height=(h-gap)+'px';el.style.top=(i%8)*h+'px'});
+ Object.keys(els).forEach(k=>{if(!keep.has(k)){els[k].remove();delete els[k]}});
+}
+connect(onData);addEventListener('resize',draw);
+</script></body></html>

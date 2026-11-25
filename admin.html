@@ -1,0 +1,122 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Control room</title><link rel="stylesheet" href="css/style.css"></head>
+<body><div class="top"><h1 id="mn"></h1><a href="index.html">Home</a><a href="board.html" target="_blank">Main scoreboard</a><a href="report.html" target="_blank">Report</a></div>
+<div class="tabs" id="tabs"></div><main id="m"></main>
+<script src="lib/xlsx.full.min.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="js/firebase-config.js"></script><script src="js/common.js"></script><script>
+let tab='ath',q='',note='';
+const T=[['ath','Athletes'],['ev','Events'],['data','Save / Load (days)'],['set','Settings & flags']];
+function evOptions(){return evList().map(([k,e])=>`<option value="${k}">${esc(evLabel(e))}</option>`).join('')}
+const SLOTS=()=>S.meta.slots||{};
+function boardOpts(k){const s=SLOTS();return '<option value="">No event board</option>'+[1,2,3,4,5].map(n=>{const o=s[n],ot=o&&o!==k&&S.events[o]?' (now: '+esc(evLabel(S.events[o]))+')':'';return `<option value="${n}" ${o===k?'selected':''}>Event board ${n}${ot}</option>`}).join('')}
+function boardsCard(){const s=SLOTS();return `<div class="card"><h2>Event scoreboards</h2><p class="mu">Choose the board for each event with the “Show live on” dropdown on the event card below, then open the boards on their own screens. The <b>Main scoreboard</b> shows an event only after you press <b>✔ Mark finished</b>; until then it shows PENDING.</p><div class="chips">${[1,2,3,4,5].map(n=>`<a class="chip" style="padding:6px 12px;text-decoration:none;color:inherit" href="eventboard.html?b=${n}" target="_blank"><b style="color:inherit">Board ${n}</b>&nbsp;<span class="mu">${S.events[s[n]]?esc(evLabel(S.events[s[n]])):'not assigned'}</span></a>`).join('')}</div></div>`}
+async function setBoard(ev,n){const s={...SLOTS()};Object.keys(s).forEach(k=>{if(s[k]===ev)delete s[k]});if(n)s[n]=ev;await patch([{c:'meta',id:'slots',d:s}]);note=n?evLabel(S.events[ev])+' → Event board '+n:evLabel(S.events[ev])+' removed from event boards';draw()}
+function draw(){
+ const f=document.activeElement;if(f&&f.tagName==='INPUT'&&f.type!=='file'&&f.id!=='sq'&&f.value&&_busy)return;
+ $('#mn').textContent=meetName();
+ $('#tabs').innerHTML=T.map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';draw()">${l}</button>`).join('');
+ let h=note?`<div class="card" style="border-color:var(--go)">${esc(note)}</div>`:'';
+ if(tab==='ath'){const all=Object.entries(S.athletes).filter(([k,a])=>(a.name+a.prov+(a.bib||'')).toLowerCase().includes(q.toLowerCase())).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  h+=`<div class="grid"><div class="card"><h2>Register athlete</h2><div class="row"><input id="an" placeholder="Full name"><input id="ab" inputmode="numeric" placeholder="Bib no. (auto)" style="max-width:150px"></div><div class="row"><select id="ap"><option value="">Province</option>${PN.map(p=>`<option>${p}</option>`).join('')}</select></div>
+  <div class="row"><select id="ae" multiple size="4" title="Hold Ctrl to pick several events">${evOptions()}</select></div><button class="p" onclick="reg()">Register athlete</button></div>
+  <div class="card"><h2>Import from Excel</h2><p class="mu">Columns: <b>Name</b>, <b>Province</b>, <b>Events</b> (optional, comma separated – missing events are created).</p><div class="row"><input type="file" id="xf" accept=".xlsx,.xls,.csv" onchange="imp(this)"></div><button onclick="tpl()">Download Excel template</button></div></div>
+  <div class="card"><div class="row"><h2 style="flex:1;margin:0">Athletes (${Object.keys(S.athletes).length})</h2><button onclick="autoBibs()">Auto-assign missing bib numbers</button></div><div class="row"><input id="sq" placeholder="Search name or province…" value="${esc(q)}" oninput="q=this.value;_busy=0;draw();const s=$('#sq');s.focus();s.setSelectionRange(q.length,q.length)"></div>`+
+  all.map(([k,a])=>`<div class="item">${flag(a.prov)}<div class="n">${a.bib?`<span class="tag">#${esc(a.bib)}</span> `:''}${esc(a.name)}<div class="mu">${esc(a.prov)} · ${Object.values(S.results).filter(r=>r.ath===k&&r.st==='r1').map(r=>esc(S.events[r.ev]?evLabel(S.events[r.ev]):'')).join(', ')||'no events'}</div></div><button class="d" onclick="delA('${k}')">Remove</button></div>`).join('')+'</div>'}
+ if(tab==='ev'){h+=boardsCard();h+=`<div class="card"><h2>New event</h2><div class="row"><input id="en" placeholder="Event (e.g. Men Long Jump)"><input id="ed" placeholder="Label (optional)"><select id="ek"><option value="field">Field – distance (longest wins)</option><option value="track">Track – time (fastest wins)</option></select><select id="eat"><option value="3">3 attempts</option><option value="6">6 attempts</option><option value="5">5 attempts</option><option value="4">4 attempts</option><option value="2">2 attempts</option><option value="1">1 attempt</option></select><button class="p" onclick="addEv()">Add event</button></div></div><div class="grid">`+
+  evList().map(([k,e])=>{const rows=res(k,e.stage),cand=Object.keys(S.athletes).filter(a=>!S.results[`${k}_${e.stage}_${a}`]).sort((a,b)=>S.athletes[a].name.localeCompare(S.athletes[b].name));
+  return`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${esc(evLabel(e))}</h2><span class="tag">${e.kind==='field'?'Field · distance':'Track · time'}</span> <span class="tag ${e.stage==='final'?'go':''}">${e.stage==='final'?'Final':'Round 1'}</span>${e.done?' <span class="tag go">✔ Finished</span>':''}</div>
+  <div class="chips">${rows.map(r=>`<span class="chip">${flag(ath(r.ath).prov)}${ath(r.ath).bib?'#'+esc(ath(r.ath).bib)+' ':''}${esc(ath(r.ath).name)} <span class="mu">${r.t!=null?fmtV(r.t,k):''}</span>${r.t==null?`<b onclick="rmEntry('${r.k}')">✕</b>`:''}</span>`).join('')||'<span class="mu">No athletes yet</span>'}</div>
+  ${e.stage==='r1'?`<div class="row"><select id="add_${k}"><option value="">Add athlete…</option>${cand.map(a=>`<option value="${a}">${esc(S.athletes[a].name)} (${esc(S.athletes[a].prov)})</option>`).join('')}</select><button onclick="addTo('${k}')">Add</button></div>
+  <div class="row"><button onclick="addAll('${k}')">Add all registered</button><button class="g" onclick="makeFinal('${k}')">Create Final – Top 8</button></div>`:`<p class="mu">Finalists locked in from Round 1.</p>`}
+  <div class="row"><span class="mu">Show live on</span><select onchange="setBoard('${k}',this.value)">${boardOpts(k)}</select></div><div class="row">${e.done?`<button onclick="setDone('${k}',false)">Reopen</button>`:`<button class="g" onclick="setDone('${k}',true)">✔ Mark finished</button>`}<button class="d" onclick="delEv('${k}')">Delete event</button></div></div>`}).join('')+'</div>'}
+ if(tab==='set'){h+=`<div class="card"><h2>Scoreboard header</h2><div class="row"><input id="mnm" placeholder="Meet / tournament name" value="${esc(meetName())}"></div><div class="grid">
+  <div><h3>Left logo</h3><div class="row"><input id="llb" placeholder="Label" value="${esc((S.meta.main||{}).leftLabel??'Government of Sri Lanka')}"></div><div class="row"><input type="file" accept="image/*" onchange="upLogo('leftLogo',this)"><button onclick="rmLogo('leftLogo')">Use default emblem</button></div></div>
+  <div><h3>Right logo</h3><div class="row"><input id="rlb" placeholder="Label e.g. Athletics Association" value="${esc((S.meta.main||{}).rightLabel||'')}"></div><div class="row"><input type="file" accept="image/*" onchange="upLogo('rightLogo',this)"><button onclick="rmLogo('rightLogo')">Remove logo</button></div></div></div><button class="p" onclick="saveName()">Save names</button></div>
+  <div class="card"><h2>Province flags</h2><p class="mu">Upload the real flag image for each province (PNG/JPG). Until then a colour badge is shown.</p><div class="grid">`+
+  PN.map(p=>`<div class="item">${flag(p)}<div class="n">${p}</div><input type="file" accept="image/*" id="f_${p.replace(/ /g,'_')}" onchange="upFlag('${p}',this)" style="max-width:150px"></div>`).join('')+`</div></div>
+  <div class="card"><h2>Data</h2><div class="row"><a href="report.html" target="_blank"><button class="p">Open report / download</button></a><button onclick="backupJson()">Download backup (.json)</button></div><p class="mu">All data is saved live in Firebase. Download a backup before using any reset below.</p></div>
+  <div class="card" style="border-color:var(--red)"><h2 style="color:var(--red)">Reset data</h2>
+   <div class="row"><button class="d" onclick="resetResults()">Reset results only</button><span class="mu" style="flex:1">Keeps athletes and events; clears all times / attempts, finals and "finished" marks (use after a practice run).</span></div>
+   <div class="row"><button class="d" onclick="resetAll()">Start new meet</button><span class="mu" style="flex:1">Clears athletes, events, results and board assignments. Keeps header, logos and province flags.</span></div>
+   <div class="row"><button class="d" onclick="resetFull()">Factory reset (everything)</button><span class="mu" style="flex:1">Clears EVERYTHING including header, logos and flags.</span></div></div>`}
+ if(tab==='data'){const evs=evList(),fin=evs.filter(([k,e])=>e.done);
+  h+=`<div class="card"><h2>1 · Download (end of the day)</h2><p class="mu">In the <b>Events</b> tab press <b>✔ Mark finished</b> on every event that is completed, then download here. Keep the file safe (USB / e-mail / cloud).</p>
+  <div class="chips">${evs.map(([k,e])=>`<span class="chip" style="padding-left:10px">${e.done?'✔':'…'} ${esc(evLabel(e))} <span class="mu">${e.stage==='final'?'Final':'Round 1'}</span></span>`).join('')||'<span class="mu">No events yet</span>'}</div>
+  <div class="row"><button class="p" onclick="exportMeet('finished')">Download finished events (${fin.length})</button><button onclick="exportMeet('all')">Download everything (full backup)</button></div></div>
+  <div class="card"><h2>2 · Import (next day / another laptop)</h2><p class="mu">Start the program on the laptop you continue on and choose the file here. Nothing is deleted – athletes and events are <b>merged</b> with what is already in this program (same athlete / same event is recognised, so no duplicates). Finished events come back with all their results and Finals; unfinished ones carry on where you stopped. Logos, flags and the meet name are restored if this laptop has none.</p>
+  <div class="row"><input type="file" accept=".json,application/json" onchange="importMeet(this)"></div></div>
+  <div class="card"><p class="mu">Tip: on the <b>same</b> laptop nothing is lost when you close the program – everything is saved in <b>data.json</b> next to server.js and is still there when you start again. This download is for moving to a different laptop and for safe backups.</p></div>`}
+ $('#m').innerHTML=h}
+let _busy=1;
+const nextBib=()=>Math.max(100,...Object.values(S.athletes).map(x=>+x.bib||0))+1;
+async function reg(){const n=$('#an').value.trim(),p=$('#ap').value;let b=$('#ab').value.trim();if(!n||!p)return alert('Enter name and province');
+ if(b&&Object.values(S.athletes).some(x=>String(x.bib)===b))return alert('Bib '+b+' is already used');if(!b)b=String(nextBib());
+ const id=uid('a');await patch([{c:'athletes',id,d:{name:n,prov:p,bib:b}}]);for(const e of $('#ae').selectedOptions)await enter(e.value,id);note='Registered '+n+' – Bib '+b;draw()}
+async function autoBibs(){let b=nextBib();const ops=Object.entries(S.athletes).filter(([k,x])=>!x.bib).sort((x,y)=>x[1].name.localeCompare(y[1].name)).map(([k,x])=>({c:'athletes',id:k,d:{...x,bib:String(b++)}}));if(ops.length)await patch(ops);note=ops.length+' bib numbers assigned';draw()}
+async function delA(k){if(!confirm('Remove athlete and their results?'))return;await patch([{c:'athletes',id:k,d:null},...Object.keys(S.results).filter(r=>S.results[r].ath===k).map(r=>({c:'results',id:r,d:null}))])}
+async function rmEntry(k){await patch([{c:'results',id:k,d:null}])}
+async function addEv(){const n=$('#en').value.trim();if(!n)return;await patch([{c:'events',id:uid('e'),d:{name:n,dist:$('#ed').value.trim(),stage:'r1',kind:$('#ek').value,att:+$('#eat').value,created:Date.now(),upd:Date.now()}}])}
+async function addTo(k){const v=$('#add_'+k).value;if(v)await enter(k,v)}
+async function addAll(k){const e=S.events[k];await patch(Object.keys(S.athletes).filter(a=>!S.results[`${k}_r1_${a}`]).map(a=>({c:'results',id:`${k}_r1_${a}`,d:{ev:k,st:'r1',ath:a,att:[],t:null,ts:Date.now()}})))}
+async function delEv(k){if(confirm('Delete event and its results?'))await patch([{c:'events',id:k,d:null},...Object.keys(S.results).filter(r=>S.results[r].ev===k).map(r=>({c:'results',id:r,d:null}))])}
+async function saveName(){await patch([{c:'meta',id:'main',d:{...S.meta.main,name:$('#mnm').value.trim(),leftLabel:$('#llb').value.trim(),rightLabel:$('#rlb').value.trim()}}]);note='Saved'}
+function upLogo(f,inp){const file=inp.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=300/Math.max(im.width,im.height,1),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);patch([{c:'meta',id:'main',d:{...S.meta.main,[f]:c.toDataURL('image/png')}}])};im.src=r.result};r.readAsDataURL(file)}
+function rmLogo(f){const d={...S.meta.main};delete d[f];patch([{c:'meta',id:'main',d}])}
+function upFlag(p,inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=240;c.height=160;c.getContext('2d').drawImage(im,0,0,240,160);patch([{c:'flags',id:p,d:c.toDataURL('image/png')}])};im.src=r.result};r.readAsDataURL(f)}
+function backupJson(){const blob=new Blob([JSON.stringify({exported:new Date().toISOString(),athletes:S.athletes,events:S.events,results:S.results,flags:S.flags,meta:S.meta},null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='meet_backup_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';a.click()}
+async function resetResults(){if(prompt('This deletes ALL results (athletes and events are kept).\nType RESET to continue')!=='RESET')return;
+ const ops=Object.keys(S.results).map(k=>({c:'results',id:k,d:null}));
+ Object.entries(S.events).forEach(([k,e])=>{const d={...e,stage:'r1',upd:Date.now()};delete d.done;ops.push({c:'events',id:k,d})});
+ ops.push({c:'meta',id:'call',d:null});await patch(ops);alert('Results cleared.')}
+async function resetAll(){if(prompt('Start a new meet: deletes all athletes, events and results.\nType CLEAR to continue')==='CLEAR'){await patch([{reset:1}]);alert('New meet ready.')}}
+async function resetFull(){if(prompt('FACTORY RESET: deletes everything (athletes, events, results, header, logos, flags).\nType DELETE ALL to continue')==='DELETE ALL'){await patch([{reset:'full'}]);alert('Everything cleared.')}}
+
+async function setDone(k,v){const e=S.events[k];if(!e)return;
+ if(v){const open=slotList(k,e.stage).filter(x=>!slotDone(x)).length;if(open&&!confirm(open+' attempt(s) are still empty in this event. Mark it finished anyway?'))return}
+ const d={...e};if(v)d.done=true;else delete d.done;await patch([{c:'events',id:k,d}])}
+function stamp(){const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())}
+function dlFile(name,obj){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(obj)],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+function exportMeet(kind){const keys=Object.keys(S.events).filter(k=>kind==='all'||S.events[k].done);
+ if(!keys.length)return alert('No finished events yet. Press "Mark finished" on an event in the Events tab first.');
+ const events=Object.fromEntries(keys.map(k=>[k,S.events[k]])),results=Object.fromEntries(Object.entries(S.results).filter(([k,r])=>events[r.ev])),ids=new Set(Object.values(results).map(r=>r.ath));
+ const athletes=kind==='all'?{...S.athletes}:Object.fromEntries(Object.entries(S.athletes).filter(([k])=>ids.has(k)));
+ const out={app:'athletics-meet-manager',version:1,kind,exported:new Date().toISOString(),meetName:meetName(),athletes,events,results,flags:S.flags||{}};
+ if(S.meta&&S.meta.main)out.meta={main:S.meta.main};
+ dlFile((kind==='all'?'meet_BACKUP_':'meet_finished_')+stamp()+'.json',out);
+ note=`Downloaded ${Object.keys(events).length} event(s), ${Object.keys(athletes).length} athlete(s), ${Object.keys(results).length} result row(s).`;draw()}
+async function importMeet(inp){const f=inp.files[0];if(!f)return;let d;
+ try{d=JSON.parse(await f.text())}catch(e){inp.value='';return alert('This file is not a valid meet file.')}
+ if(!d||d.app!=='athletics-meet-manager'||!d.athletes||!d.events||!d.results){inp.value='';return alert('This is not a meet file downloaded from this program.')}
+ const norm=x=>String(x??'').trim().toLowerCase().replace(/\s+/g,' '),ops=[],amap={},emap={},changed=[];let aNew=0,aSame=0,eNew=0,eUpd=0,eKeep=0,rPut=0,rKeep=0;
+ // athletes: same id, else same name + province
+ const used=new Set(Object.values(S.athletes).map(a=>String(a.bib||'')).filter(Boolean));let maxB=Math.max(100,...[...used].map(Number).filter(Boolean),...Object.values(d.athletes).map(a=>+a.bib||0));
+ for(const[id,a]of Object.entries(d.athletes)){const to=S.athletes[id]?id:(Object.entries(S.athletes).find(([k,x])=>norm(x.name)===norm(a.name)&&norm(x.prov)===norm(a.prov))||[])[0];
+  if(to){amap[id]=to;aSame++;continue}
+  let bib=a.bib?String(a.bib):'';if(bib&&used.has(bib)){const nb=String(++maxB);changed.push(`${a.name} ${bib}→${nb}`);bib=nb}if(bib)used.add(bib);
+  amap[id]=id;aNew++;ops.push({c:'athletes',id,d:{...a,bib}})}
+ // events: same id, else same name + label. The copy that is further on (finished / final) wins, otherwise the newer one.
+ const prog=x=>(x.done?2:0)+(x.stage==='final'?1:0);
+ for(const[id,e]of Object.entries(d.events)){const lid=S.events[id]?id:(Object.entries(S.events).find(([k,x])=>norm(x.name)===norm(e.name)&&norm(x.dist)===norm(e.dist))||[])[0];
+  if(!lid){emap[id]=id;eNew++;ops.push({c:'events',id,d:e});continue}
+  emap[id]=lid;const l=S.events[lid];
+  if(prog(e)>prog(l)||(prog(e)===prog(l)&&(e.upd||0)>(l.upd||0))){eUpd++;ops.push({c:'events',id:lid,d:{...e,created:l.created??e.created}})}else eKeep++}
+ // results: the row with more attempts entered wins, otherwise the newer one
+ const nf=r=>getAtt(r).filter(v=>v!=null).length;
+ for(const r of Object.values(d.results)){const ev=emap[r.ev],ath=amap[r.ath];if(!ev||!ath)continue;const k=`${ev}_${r.st}_${ath}`,l=S.results[k];
+  if(!l||nf(r)>nf(l)||(nf(r)===nf(l)&&(r.ts||0)>(l.ts||0))){rPut++;ops.push({c:'results',id:k,d:{...r,ev,ath}})}else rKeep++}
+ for(const[p,v]of Object.entries(d.flags||{}))if(v&&!S.flags[p])ops.push({c:'flags',id:p,d:v});
+ if(d.meta&&d.meta.main&&!(S.meta.main&&S.meta.main.name))ops.push({c:'meta',id:'main',d:d.meta.main});
+ if(!(aNew+eNew+eUpd+rPut)){inp.value='';note='Nothing new in this file – everything is already here.';return draw()}
+ const msg=`Import "${d.meetName||f.name}"?\n\nAthletes: ${aNew} new, ${aSame} already here\nEvents: ${eNew} new, ${eUpd} updated from the file, ${eKeep} kept as they are here\nResults: ${rPut} added/updated, ${rKeep} kept as they are here`+(changed.length?`\n\nBib numbers changed because they were already used here:\n${changed.slice(0,8).join('\n')}${changed.length>8?'\n…':''}`:'');
+ if(!confirm(msg)){inp.value='';return}
+ try{await patch(ops);note=`Imported: ${aNew} new athletes, ${eNew+eUpd} events, ${rPut} results.`+(changed.length?` Bib changed: ${changed.join(', ')}.`:'')}catch(e){note='Import failed – file too big or server stopped. Nothing was lost.'}
+ inp.value='';draw()}
+function tpl(){const ws=XLSX.utils.aoa_to_sheet([['Name','Province','Bib','Events'],['Kamal Perera','Western',101,'Men Long Jump, Men Shot Put'],['Nimali Silva','Southern',102,'Women Javelin Throw']]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Athletes');XLSX.writeFile(wb,'athletes_template.xlsx')}
+async function imp(inp){const f=inp.files[0];if(!f)return;const wb=XLSX.read(await f.arrayBuffer()),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);let ok=0,bad=[];const ops=[],evByName={},usedB=new Set(Object.values(S.athletes).map(x=>String(x.bib))),maxB=Math.max(100,...[...usedB].map(Number).filter(Boolean));let nb=maxB+1;
+ Object.entries(S.events).forEach(([k,e])=>evByName[e.name.toLowerCase()]=k);
+ for(const r of rows){const g=k=>{const key=Object.keys(r).find(x=>x.trim().toLowerCase()===k);return key?String(r[key]).trim():''};const name=g('name'),p=normProv(g('province'));if(!name||!p){bad.push(name||'(blank row)');continue}
+  const id=uid('a');let bib=g('bib');if(!bib||usedB.has(bib)){while(usedB.has(String(nb)))nb++;bib=String(nb)}usedB.add(bib);ops.push({c:'athletes',id,d:{name,prov:p,bib}});
+  for(const en of g('events').split(',').map(s=>s.trim()).filter(Boolean)){let k=evByName[en.toLowerCase()];if(!k){k=uid('e');evByName[en.toLowerCase()]=k;const kind=/\d\s?(m|km)\b|hurdle|relay|steeple|walk|marathon/i.test(en)?'track':'field';ops.push({c:'events',id:k,d:{name:en,dist:'',stage:'r1',kind,att:3,created:Date.now(),upd:Date.now()}})}
+   ops.push({c:'results',id:`${k}_r1_${id}`,d:{ev:k,st:'r1',ath:id,att:[],t:null,ts:Date.now()}})}
+  ok++}
+ await patch(ops);inp.value='';note=`Imported ${ok} athletes.`+(bad.length?` Skipped (name/province missing or not recognised): ${bad.join(', ')}`:'');draw()}
+connect(draw);
+</script></body></html>

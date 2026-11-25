@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "meet": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
